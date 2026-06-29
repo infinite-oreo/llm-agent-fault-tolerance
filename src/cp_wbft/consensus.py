@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import itertools
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -36,7 +37,7 @@ class CPWBFT:
 
         for state in states:
             visible = [by_id[node] for node in sorted_neighbors(self.graph, state.agent_id)]
-            strongest = max([state, *visible], key=lambda item: (item.confidence, -item.agent_id))
+            strongest = max(itertools.chain([state], visible), key=lambda item: (item.confidence, -item.agent_id))
             refined.append(state.with_decision(strongest.answer, strongest.confidence))
 
         return refined

@@ -12,8 +12,6 @@ from .simulation import run_simulation
 
 
 def parse_nodes(value: str) -> set[int]:
-    if not value:
-        return set()
     return {int(part.strip()) for part in value.split(",") if part.strip()}
 
 

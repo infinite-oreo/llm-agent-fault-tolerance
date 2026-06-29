@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass
 
 
@@ -23,9 +24,4 @@ class AgentState:
             raise ValueError("confidence must be in [0.0, 1.0]")
 
     def with_decision(self, answer: str, confidence: float) -> "AgentState":
-        return AgentState(
-            agent_id=self.agent_id,
-            answer=answer,
-            confidence=confidence,
-            is_byzantine=self.is_byzantine,
-        )
+        return dataclasses.replace(self, answer=answer, confidence=confidence)

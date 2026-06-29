@@ -11,6 +11,11 @@ from collections.abc import Iterable
 
 Adjacency = dict[int, set[int]]
 
+# ---- 拓扑名称 → 构造函数 ------------------------------------------------
+# 需要 seed 参数的拓扑单独列出，避免派发时传参歧义
+_SEEDED = {"random", "random-graph"}
+_BUILDERS: dict[str, object] = {}  # 填充见模块尾部
+
 
 def build_topology(name: str, n: int, *, seed: int = 7) -> Adjacency:
     """Build one of the paper's representative MAS communication topologies."""
@@ -19,20 +24,13 @@ def build_topology(name: str, n: int, *, seed: int = 7) -> Adjacency:
         raise ValueError("n must be at least 2")
 
     normalized = name.lower().replace("_", "-")
-    if normalized in {"complete", "complete-graph"}:
-        return _complete(n)
-    if normalized == "chain":
-        return _chain(n)
-    if normalized == "star":
-        return _star(n)
-    if normalized == "tree":
-        return _tree(n)
-    if normalized in {"random", "random-graph"}:
-        return _random_connected(n, seed=seed)
-    if normalized in {"layered", "layered-graph"}:
-        return _layered(n)
+    builder = _BUILDERS.get(normalized)
+    if builder is None:
+        raise ValueError(f"unknown topology: {name}")
 
-    raise ValueError(f"unknown topology: {name}")
+    if normalized in _SEEDED:
+        return builder(n, seed=seed)  # type: ignore[call-arg]
+    return builder(n)  # type: ignore[call-arg]
 
 
 def sorted_neighbors(graph: Adjacency, node: int) -> list[int]:
@@ -100,3 +98,17 @@ def _layered(n: int) -> Adjacency:
     for left, right in zip(layers, layers[1:]):
         _connect(graph, ((a, b) for a in left for b in right))
     return graph
+
+
+# ---- 拓扑注册表（模块级，避免循环引用） ------------------------------------
+_BUILDERS.update({
+    "complete":       _complete,
+    "complete-graph": _complete,
+    "chain":          _chain,
+    "star":           _star,
+    "tree":           _tree,
+    "random":         _random_connected,
+    "random-graph":   _random_connected,
+    "layered":        _layered,
+    "layered-graph":  _layered,
+})
