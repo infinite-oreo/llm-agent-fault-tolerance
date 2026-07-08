@@ -41,6 +41,7 @@ def run_simulation(
     honest_confidence: float,
     byzantine_confidence: float,
     seed: int = 7,
+    rounds: int = 1,
 ) -> ConsensusResult:
     graph = build_topology(topology, n, seed=seed)
     states = make_states(
@@ -51,4 +52,4 @@ def run_simulation(
         honest_confidence=honest_confidence,
         byzantine_confidence=byzantine_confidence,
     )
-    return CPWBFT(graph).decide(states)
+    return CPWBFT(graph).decide(states, rounds=rounds)

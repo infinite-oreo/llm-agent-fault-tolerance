@@ -1,6 +1,6 @@
 """
 [INPUT]:  依赖 models.AgentState，依赖 topologies.Adjacency / sorted_neighbors
-[OUTPUT]: 对外提供 ConsensusResult 数据类，CPWBFT 共识引擎（refine + decide）
+[OUTPUT]: 对外提供 ConsensusResult 数据类，CPWBFT 共识引擎（refine_once + refine[多轮] + decide）
 [POS]:    cp_wbft 的算法核心，被 simulation 驱动，被 __init__ 对外暴露
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 """
@@ -29,8 +29,11 @@ class CPWBFT:
     def __init__(self, graph: Adjacency) -> None:
         self.graph = graph
 
-    def refine(self, states: list[AgentState]) -> list[AgentState]:
-        """Let each agent adopt the most confident visible neighbor decision."""
+    def refine_once(self, states: list[AgentState]) -> list[AgentState]:
+        """Let each agent adopt the most confident visible neighbor decision.
+
+        This is a single round: information only travels one hop per call.
+        """
 
         by_id = {state.agent_id: state for state in states}
         refined: list[AgentState] = []
@@ -42,14 +45,36 @@ class CPWBFT:
 
         return refined
 
-    def decide(self, states: list[AgentState]) -> ConsensusResult:
+    def refine(self, states: list[AgentState], *, rounds: int = 1) -> list[AgentState]:
+        """Run `rounds` sequential one-hop refinement passes.
+
+        Each round lets confident decisions travel one more hop through the
+        graph, mirroring how information propagates across constrained
+        topologies (e.g. chain, tree) over multiple communication rounds.
+        Stops early once a round produces no change (fixed point reached).
+        """
+
+        if rounds < 1:
+            raise ValueError("rounds must be at least 1")
+
+        current = states
+        for _ in range(rounds):
+            nxt = self.refine_once(current)
+            if nxt == current:
+                break
+            current = nxt
+
+        return current
+
+    def decide(self, states: list[AgentState], *, rounds: int = 1) -> ConsensusResult:
         """Run local refinement, then choose the answer with max average confidence.
 
         Ties follow the paper's supporter-count tie-breaker and then a stable
-        lexical fallback for reproducibility.
+        lexical fallback for reproducibility. `rounds` controls how many
+        one-hop refinement passes run before scoring (see `refine`).
         """
 
-        refined = self.refine(states)
+        refined = self.refine(states, rounds=rounds)
         buckets: dict[str, list[float]] = defaultdict(list)
         for state in refined:
             buckets[state.answer].append(state.confidence)

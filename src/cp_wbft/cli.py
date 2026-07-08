@@ -25,6 +25,7 @@ def main() -> None:
     parser.add_argument("--honest-confidence", type=float, default=0.656)
     parser.add_argument("--byzantine-confidence", type=float, default=0.005)
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--rounds", type=int, default=1, help="number of one-hop refinement passes")
     args = parser.parse_args()
 
     result = run_simulation(
@@ -36,6 +37,7 @@ def main() -> None:
         honest_confidence=args.honest_confidence,
         byzantine_confidence=args.byzantine_confidence,
         seed=args.seed,
+        rounds=args.rounds,
     )
 
     print(f"consensus_answer={result.answer}")
